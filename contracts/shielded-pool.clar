@@ -145,3 +145,38 @@
             true))
     )
 )
+
+(define-private (verify-proof-level
+    (proof-element (buff 32))
+    (accumulator {current-hash: (buff 32), is-valid: bool}))
+    (let (
+        (current-hash (get current-hash accumulator))
+        (combined-hash (hash-combine current-hash proof-element))
+    )
+        {
+            current-hash: combined-hash,
+            is-valid: (and 
+                (get is-valid accumulator) 
+                (is-valid-hash? combined-hash)
+                (is-valid-hash? proof-element))
+        }
+    )
+)
+
+(define-private (verify-merkle-proof 
+    (leaf-hash (buff 32))
+    (proof (list 20 (buff 32)))
+    (root (buff 32)))
+    (let (
+        (proof-result (fold verify-proof-level
+            proof
+            {current-hash: leaf-hash, is-valid: true}))
+    )
+        (asserts! (is-valid-hash? leaf-hash) ERR-INVALID-PROOF)
+        (asserts! (is-valid-hash? root) ERR-INVALID-ROOT)
+        (asserts! (is-eq root (var-get current-root)) ERR-INVALID-ROOT)
+        (if (get is-valid proof-result)
+            (ok true)
+            ERR-INVALID-PROOF)
+    )
+)
