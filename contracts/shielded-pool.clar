@@ -220,7 +220,7 @@
             {commitment: commitment}
             {
                 leaf-index: leaf-index,
-                timestamp: block-height
+                timestamp: stacks-block-height
             })
         
         (var-set next-index (+ leaf-index u1))
