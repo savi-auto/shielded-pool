@@ -104,3 +104,44 @@
         ERR-INVALID-TOKEN
     )
 )
+
+(define-private (validate-amount (amount uint))
+    (if (and 
+        (>= amount MIN-DEPOSIT-AMOUNT)
+        (<= amount MAX-DEPOSIT-AMOUNT))
+        (ok true)
+        ERR-INVALID-AMOUNT
+    )
+)
+
+(define-private (get-tree-node (level uint) (index uint))
+    (default-to 
+        ZERO-VALUE
+        (get hash (map-get? merkle-tree {level: level, index: index})))
+)
+
+(define-private (set-tree-node (level uint) (index uint) (hash (buff 32)))
+    (map-set merkle-tree
+        {level: level, index: index}
+        {hash: hash})
+)
+
+(define-private (update-parent-at-level (level uint) (index uint))
+    (let (
+        (parent-index (/ index u2))
+        (is-right-child (is-eq (mod index u2) u1))
+        (sibling-index (if is-right-child (- index u1) (+ index u1)))
+        (current-hash (get-tree-node level index))
+        (sibling-hash (get-tree-node level sibling-index))
+    )
+        (asserts! (is-valid-hash? current-hash) ERR-INVALID-COMMITMENT)
+        (ok (begin
+            (set-tree-node 
+                (+ level u1) 
+                parent-index 
+                (if is-right-child
+                    (hash-combine sibling-hash current-hash)
+                    (hash-combine current-hash sibling-hash)))
+            true))
+    )
+)
