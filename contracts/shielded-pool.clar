@@ -229,3 +229,58 @@
         (ok leaf-index)
     )
 )
+
+(define-public (withdraw
+    (nullifier (buff 32))
+    (root (buff 32))
+    (proof (list 20 (buff 32)))
+    (recipient principal)
+    (token <ft-trait>)
+    (amount uint))
+    (begin
+        ;; Input validation
+        (asserts! (is-valid-hash? nullifier) ERR-INVALID-PROOF)
+        (asserts! (is-valid-hash? root) ERR-INVALID-ROOT)
+        (try! (validate-amount amount))
+        (try! (validate-token token))
+        
+        ;; Check nullifier hasn't been used
+        (asserts! (is-none (map-get? nullifiers {nullifier: nullifier})) 
+            ERR-NULLIFIER-ALREADY-EXISTS)
+        
+        ;; Verify the Merkle proof
+        (try! (verify-merkle-proof nullifier proof root))
+        
+        ;; Mark nullifier as used
+        (map-set nullifiers {nullifier: nullifier} {used: true})
+        
+        ;; Transfer tokens to recipient
+        (try! (as-contract (contract-call? token transfer 
+            amount 
+            tx-sender 
+            recipient 
+            none)))
+        
+        (ok true)
+    )
+)
+
+;; Admin Functions
+;;
+
+(define-public (set-allowed-token (token-principal (optional principal)))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+        (var-set allowed-token token-principal)
+        (ok true)
+    )
+)
+
+(define-public (transfer-ownership (new-owner principal))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+        (asserts! (not (is-eq new-owner (var-get contract-owner))) ERR-NOT-AUTHORIZED)
+        (var-set contract-owner new-owner)
+        (ok true)
+    )
+)
