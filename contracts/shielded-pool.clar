@@ -65,3 +65,42 @@
 (define-data-var current-root (buff 32) ZERO-VALUE)
 (define-data-var next-index uint u0)
 (define-data-var allowed-token (optional principal) none)
+
+;; Storage Maps
+(define-map deposits 
+    {commitment: (buff 32)} 
+    {leaf-index: uint, timestamp: uint}
+)
+
+(define-map nullifiers 
+    {nullifier: (buff 32)} 
+    {used: bool}
+)
+
+(define-map merkle-tree 
+    {level: uint, index: uint} 
+    {hash: (buff 32)}
+)
+
+;; Private Functions
+;;
+
+(define-private (hash-combine (left (buff 32)) (right (buff 32)))
+    (sha256 (concat left right))
+)
+
+(define-private (is-valid-hash? (hash (buff 32)))
+    (and 
+        (not (is-eq hash ZERO-VALUE))
+        (is-eq (len hash) u32)
+    )
+)
+
+(define-private (validate-token (token <ft-trait>))
+    (match (var-get allowed-token)
+        allowed-principal (if (is-eq (contract-of token) allowed-principal)
+                            (ok true)
+                            ERR-INVALID-TOKEN)
+        ERR-INVALID-TOKEN
+    )
+)
